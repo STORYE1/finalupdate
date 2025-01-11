@@ -5,7 +5,7 @@ class AuthController {
     constructor() {
         this.authService = new AuthService();
     }
-
+    
     async signup(req, res) {
         console.log("i am here in controller")
         try {
