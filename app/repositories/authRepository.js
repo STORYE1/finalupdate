@@ -55,6 +55,12 @@ class AuthRepository {
         const Model = this.getModel(userType);
         return await Model.findByPk(userId);
     }
+
+    async findUserByPhone(phone, userType) {
+        const Model = this.getModel(userType);
+        return await Model.findOne({ where: { phone } });
+    }
+
 }
 
 module.exports = AuthRepository;
