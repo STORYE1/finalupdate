@@ -10,7 +10,7 @@ class AuthService {
     }
 
     generateOTP() {
-        return Math.floor(1000 + Math.random() * 9000).toString(); 
+        return Math.floor(1000 + Math.random() * 9000).toString();
     }
 
 
@@ -24,7 +24,12 @@ class AuthService {
     async signup(email, phone, userType) {
         const existingUser = await this.authRepository.findUserByEmail(email, userType);
         if (existingUser) {
-            throw new Error("User already exists");
+            throw new Error("Email is already registered.");
+        }
+
+        const existingPhone = await this.authRepository.findUserByPhone(phone, userType);
+        if (existingPhone) {
+            throw new Error("Phone number is already registered.");
         }
 
         const otp = this.generateOTP();
@@ -33,24 +38,30 @@ class AuthService {
         try {
             await this.sendOtpEmail(email, otp);
             await this.authRepository.createUser({ email, phone, otp, otpExpirationTime }, userType);
-            return { message: 'Signup successful. OTP sent to your email.' };
+            return { message: "Signup successful. OTP sent to your email." };
         } catch (error) {
-            throw new Error('Error during signup process');
+            throw new Error("Error during signup process");
         }
     }
 
+    async findUserByPhone(phone, userType) {
+        const Model = this.getModel(userType);
+        return await Model.findOne({ where: { phone } });
+    }
+
+
+
     async verifyOtp(email, otp, userType) {
-        console.log("thi is the otp ", otp)
         const user = await this.authRepository.findUserByEmail(email, userType);
         if (!user) {
-            throw new Error('User not found');
+            throw new Error("User not found.");
         }
 
         if (user.otp !== otp) {
-            throw new Error('Invalid OTP');
+            throw new Error("Invalid OTP.");
         }
         if (Date.now() > user.otpExpirationTime) {
-            throw new Error('OTP has expired');
+            throw new Error("OTP has expired.");
         }
 
         const payload = { userId: user.user_id, email: user.email };
@@ -59,13 +70,15 @@ class AuthService {
         user.token = token;
         await this.authRepository.updateUser(user, userType);
 
-        return { message: 'OTP verified successfully.', token };
+        return { message: "OTP verified successfully.", token };
     }
+
+
 
     async loginRequest(email, userType) {
         const user = await this.authRepository.findUserByEmail(email, userType);
         if (!user) {
-            throw new Error('User not found');
+            throw new Error("User not found. Please sign up first.");
         }
 
         const otp = this.generateOTP();
@@ -73,14 +86,11 @@ class AuthService {
         await this.authRepository.updateUser(user, userType);
         await this.sendOtpEmail(email, otp);
 
-        const payload = { userId: user.user_id, email: user.email };
-        const token = JwtService.generateToken(payload);
-
-        user.token = token;
-        await this.authRepository.updateUser(user, userType);
-
-        return { message: 'OTP sent to your email.', token };
+        return { message: "OTP sent to your email." };
     }
+
+
+
 
 
     async loginVerify(email, otp, userType) {
